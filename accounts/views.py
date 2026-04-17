@@ -93,6 +93,16 @@ class LoginView(APIView):
             status=status.HTTP_200_OK,
         )
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
+
+class CsrfCookieView(APIView):
+    """GET /auth/csrf — sets CSRF cookie."""
+    permission_classes = [AllowAny]
+
+    @method_decorator(ensure_csrf_cookie)
+    def get(self, request):
+        return Response({'message': 'CSRF cookie set'})
 
 class LogoutView(APIView):
     """POST /auth/logout — invalidate session."""
