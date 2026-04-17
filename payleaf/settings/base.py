@@ -137,8 +137,15 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS Settings
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localhost:5173', 'http://localhost:8080'])
 CORS_ALLOW_CREDENTIALS = True
+
+# CSRF
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://localhost:5173', 'http://localhost:8080', 'http://127.0.0.1:8080'])
+if DEBUG:
+    # Allow local IP ranges for CSRF in dev
+    CSRF_TRUSTED_ORIGINS += ['http://172.26.48.1:8080', 'http://192.168.56.1:8080', 'http://192.168.0.104:8080']
 
 # DRF Settings
 REST_FRAMEWORK = {
@@ -189,7 +196,6 @@ CACHES = {
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://localhost:5173', 'http://localhost:8080'])
 
 # Celery
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')
