@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install ruff black bandit pip-audit
+      - name: Ruff Lint
+        run: ruff check .
+      - name: Black Format Check
+        run: black --check .
+      - name: Bandit Security Scan
+        run: bandit -r . -ll
+      - name: pip-audit
+        run: pip-audit
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: payleaf_test
+          POSTGRES_PASSWORD: dummy_db_pass
+        ports: [ 5432:5432 ]
+      redis:
+        image: redis:7
+        ports: [ 6379:6379 ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest-cov
+      - name: Run Tests
+        env:
+          DATABASE_URL: postgres://postgres:dummy_db_pass@localhost:5432/payleaf_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: ci-secret-key
+          STRIPE_SECRET_KEY: sk_test_mock
+          PAYMENT_PROCESSOR: stripe
+        run: pytest --cov=payments --cov=auditlog --cov=apikeys --cov-report=term-missing
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t payleaf-backend:latest .

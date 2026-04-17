@@ -1,0 +1,194 @@
+### PayLeaf API Test Collection (REST Client / Postman compatible)
+@baseUrl = http://localhost:8000/v1
+@apiKey = pl_test_provide_on_creation
+
+#########################################
+# AUTHENTICATION
+#########################################
+
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "admin@payleaf.app",
+    "password": "dummyPassword123!"
+}
+
+### Me
+GET {{baseUrl}}/auth/me
+# Cookie handled automatically in most IDE REST clients after login
+
+### Logout
+POST {{baseUrl}}/auth/logout
+
+#########################################
+# API KEYS
+#########################################
+
+# @name createKey
+POST {{baseUrl}}/api-keys/
+Content-Type: application/json
+
+{
+    "name": "Production System",
+    "scopes": ["payments:write", "customers:write"]
+}
+
+### List Keys
+GET {{baseUrl}}/api-keys/
+
+#########################################
+# CUSTOMERS
+#########################################
+
+# @name createCustomer
+POST {{baseUrl}}/customers/
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+    "email": "jane@example.com",
+    "name": "Jane Doe"
+}
+
+### List Customers
+GET {{baseUrl}}/customers/
+Authorization: Bearer {{apiKey}}
+
+#########################################
+# PAYMENTS (CARDS)
+#########################################
+
+# @name createIntent
+POST {{baseUrl}}/payments/intents
+Authorization: Bearer {{apiKey}}
+Idempotency-Key: idemp_123456
+Content-Type: application/json
+
+{
+    "amount": 5000,
+    "currency": "USD",
+    "customer": "cus_...",
+    "description": "Premium Subscription"
+}
+
+### Confirm Payment
+POST {{baseUrl}}/payments/pi_.../confirm
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+    "payment_method": "pm_card_visa"
+}
+
+### Capture Payment
+POST {{baseUrl}}/payments/pi_.../capture
+Authorization: Bearer {{apiKey}}
+
+### Cancel Payment
+POST {{baseUrl}}/payments/pi_.../cancel
+Authorization: Bearer {{apiKey}}
+
+#########################################
+# CRYPTO
+#########################################
+
+# @name createCryptoCharge
+POST {{baseUrl}}/crypto/charges
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+    "amount_fiat": 100.0,
+    "currency_fiat": "USD",
+    "description": "Bitcoin Purchase"
+}
+
+### Exchange Rates
+GET {{baseUrl}}/crypto/rates?currency=USD
+
+#########################################
+# REFUNDS
+#########################################
+
+# @name createRefund
+POST {{baseUrl}}/refunds/
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+    "payment": "pi_...",
+    "amount": 1000,
+    "reason": "requested_by_customer"
+}
+
+#########################################
+# PAYMENT LINKS
+#########################################
+
+# @name createLink
+POST {{baseUrl}}/links/
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+    "title": "Donation",
+    "amount": 2500,
+    "currency": "USD"
+}
+
+### Public Link View (No Auth)
+GET {{baseUrl}}/links/p/nanoid_slug
+
+#########################################
+# COMPLIANCE (KYC)
+#########################################
+
+# @name submitKYC
+POST {{baseUrl}}/compliance/submit
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="business_name"
+
+PayLeaf Inc
+--boundary
+Content-Disposition: form-data; name="document_type"
+
+passport
+--boundary
+Content-Disposition: form-data; name="document_front"; filename="id.jpg"
+Content-Type: image/jpeg
+
+< ./id.jpg
+--boundary--
+
+#########################################
+# AUDIT LOGS
+#########################################
+
+### List Audit Logs
+GET {{baseUrl}}/audit-logs/
+# Requires finance/admin role session
+
+### Export CSV
+GET {{baseUrl}}/audit-logs/export
+
+#########################################
+# WEBHOOKS
+#########################################
+
+# @name createWebhook
+POST {{baseUrl}}/webhooks/
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{
+    "url": "https://my-app.com/webhooks",
+    "events": ["payment.succeeded", "refund.created"]
+}
+
+### Test Webhook
+POST {{baseUrl}}/webhooks/wh_.../test
+Authorization: Bearer {{apiKey}}
