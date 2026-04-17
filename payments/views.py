@@ -110,3 +110,43 @@ class PaymentIntentViewSet(viewsets.ModelViewSet):
             return Response({"error": {"code": "processor_error", "message": str(e)}}, status=400)
             
         return Response(PaymentIntentSerializer(intent).data)
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """GET /payments/stats — Summary metrics for dashboard."""
+        from django.db.models import Sum
+        from django.utils import timezone
+        from crypto.models import CryptoCharge
+        
+        today = timezone.now().date()
+        
+        # Card stats
+        card_successful = PaymentIntent.objects.filter(status__in=['succeeded', 'captured'])
+        card_pending = PaymentIntent.objects.filter(status__in=['pending', 'processing', 'requires_payment_method'])
+        
+        # Today's card stats
+        today_card_success = card_successful.filter(created_at__date=today).aggregate(val=Sum('amount'))['val'] or 0
+        today_card_pending = card_pending.filter(created_at__date=today).aggregate(val=Sum('amount'))['val'] or 0
+        
+        # Crypto stats (Converting Decimal to minor units/cents for consistency)
+        crypto_successful = CryptoCharge.objects.filter(status='confirmed')
+        crypto_pending = CryptoCharge.objects.filter(status='pending')
+        
+        today_crypto_success = int((crypto_successful.filter(created_at__date=today).aggregate(val=Sum('amount_fiat'))['val'] or 0) * 100)
+        today_crypto_pending = int((crypto_pending.filter(created_at__date=today).aggregate(val=Sum('amount_fiat'))['val'] or 0) * 100)
+        
+        total_success = today_card_success + today_crypto_success
+        total_pending = today_card_pending + today_crypto_pending
+        
+        return Response({
+            "metrics": {
+                "successful": total_success,
+                "pending": total_pending,
+                "settled": 0,
+                "balance": total_success,
+            },
+            "pie_data": [
+                {"name": "Cards", "value": card_successful.count()},
+                {"name": "Crypto", "value": crypto_successful.count()},
+            ]
+        })
